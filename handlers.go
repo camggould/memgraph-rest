@@ -3,6 +3,7 @@ package memgraphrest
 import (
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,20 @@ import (
 	memgraph "github.com/camggould/memgraph"
 	"github.com/camggould/memgraph-rest/viewer"
 )
+
+// viewerSubFS strips the leading "static/" directory from the embed.FS so
+// the file server can resolve requests like /assets/index-XYZ.js against
+// the right path inside the embed.
+var viewerSubFS = func() fs.FS {
+	sub, err := fs.Sub(viewer.FS, "static")
+	if err != nil {
+		// embed.FS is built at compile time; if "static" isn't there the
+		// binary is malformed — fatal at build, not at runtime, in
+		// practice. Fall back to the raw FS so we at least serve /.
+		return viewer.FS
+	}
+	return sub
+}()
 
 func (s *Server) routes(mux *http.ServeMux) {
 	// Health + info
@@ -43,7 +58,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 
 	// Viewer (root index + assets). Anything else falls through to 404.
 	mux.HandleFunc("GET /", s.handleViewerRoot)
-	mux.Handle("GET /assets/", http.FileServer(http.FS(viewer.FS)))
+	mux.Handle("GET /assets/", http.FileServer(http.FS(viewerSubFS)))
 }
 
 // --- helpers ---

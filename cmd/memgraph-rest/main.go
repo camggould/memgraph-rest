@@ -18,13 +18,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.1.0-dev"
+// var (not const) so goreleaser can inject the real version via
+// -ldflags="-X main.version=...".
+var version = "dev"
 
 func main() {
 	root := &cobra.Command{
-		Use:   "memgraph-rest",
-		Short: "REST + SSE server for memgraph",
-		Long:  "memgraph-rest exposes a memgraph store over HTTP under /v1 and streams writes over SSE at /v1/stream.",
+		Use:     "memgraph-rest",
+		Short:   "REST + SSE server for memgraph",
+		Long:    "memgraph-rest exposes a memgraph store over HTTP under /v1 and streams writes over SSE at /v1/stream.",
+		Version: version,
 	}
 	root.AddCommand(newServeCmd())
 	if err := root.Execute(); err != nil {
