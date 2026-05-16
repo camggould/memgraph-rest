@@ -1,0 +1,81 @@
+# goreleaser config for memgraph-rest. The viewer's built dist/ is
+# committed into viewer/static/ and embedded via Go's embed.FS — no JS
+# toolchain needed at release time. To refresh the viewer:
+#   cd ../memgraph-viewer && npm run build
+#   rm -rf ../memgraph-rest/viewer/static/*
+#   cp -R dist/* ../memgraph-rest/viewer/static/
+#
+# Then run: GITHUB_TOKEN=$(gh auth token) goreleaser release --clean
+version: 2
+
+project_name: memgraph-rest
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: memgraph-rest
+    main: ./cmd/memgraph-rest
+    binary: memgraph-rest
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats: ["tar.gz"]
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+    files:
+      - LICENSE
+      - README.md
+      - DESIGN.md
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+?\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\(.+?\))??!?:.+$'
+      order: 1
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^test:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: camggould
+    name: memgraph-rest
+  draft: false
+  prerelease: auto
+  name_template: "v{{ .Version }}"
