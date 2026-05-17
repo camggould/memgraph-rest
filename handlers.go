@@ -73,6 +73,10 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, ErrorOut{Error: msg})
 }
 
+func writeJSONError(w http.ResponseWriter, status int, code, msg string) {
+	writeJSON(w, status, ErrorOut{Error: msg, ErrorCode: code})
+}
+
 func mapStoreError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, memgraph.ErrNotFound):
@@ -372,14 +376,26 @@ func (s *Server) handleIncoming(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// handleNeighborhood serves GET /v1/nodes/{lineage}/neighborhood.
+// Query params: depth, kinds, follow_symlinks, max_nodes, direction.
+// direction accepts outgoing (default), incoming, or both.
 func (s *Server) handleNeighborhood(w http.ResponseWriter, r *http.Request) {
 	lineage := memgraph.LineageID(r.PathValue("lineage"))
 	q := r.URL.Query()
+	direction := q.Get("direction")
+	switch memgraph.TraverseDirection(direction) {
+	case "", memgraph.TraverseOutgoing, memgraph.TraverseIncoming, memgraph.TraverseBoth:
+		// ok
+	default:
+		writeJSONError(w, http.StatusBadRequest, "invalid_direction", "direction must be outgoing, incoming, or both")
+		return
+	}
 	opts := memgraph.TraverseOpts{
 		MaxDepth:       parseIntDefault(q.Get("depth"), 2),
 		EdgeKinds:      splitCSV(q.Get("kinds")),
 		FollowSymlinks: parseBool(q.Get("follow_symlinks")),
 		MaxNodes:       parseIntDefault(q.Get("max_nodes"), 50),
+		Direction:      memgraph.TraverseDirection(direction),
 	}
 	res, err := s.store.Traverse(r.Context(), lineage, opts)
 	if err != nil {

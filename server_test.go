@@ -239,6 +239,78 @@ func TestEdgesAndNeighborhood(t *testing.T) {
 	}
 }
 
+func TestNeighborhood_DirectionOutgoing(t *testing.T) {
+	h := newHarness(t)
+	g := mustCreateGraph(t, h, "g1", "")
+	a := mustPutNode(t, h, g.ID, "fact", "a", "")
+	b := mustPutNode(t, h, g.ID, "fact", "b", "")
+	c := mustPutNode(t, h, g.ID, "fact", "c", "")
+	mustPutEdge(t, h, g.ID, a.LineageID, b.LineageID, "cites")
+	mustPutEdge(t, h, g.ID, b.LineageID, c.LineageID, "cites")
+
+	var nb memgraphrest.NeighborhoodOut
+	if s := h.jsonDo("GET", "/v1/nodes/"+a.LineageID+"/neighborhood?depth=2&direction=outgoing", nil, &nb); s != 200 {
+		t.Fatalf("status=%d", s)
+	}
+	if !containsLineage(nb.Nodes, b.LineageID) || !containsLineage(nb.Nodes, c.LineageID) {
+		t.Fatalf("outgoing should reach b and c; got=%+v", nb.Nodes)
+	}
+}
+
+func TestNeighborhood_DirectionIncoming(t *testing.T) {
+	h := newHarness(t)
+	g := mustCreateGraph(t, h, "g1", "")
+	a := mustPutNode(t, h, g.ID, "fact", "a", "")
+	b := mustPutNode(t, h, g.ID, "fact", "b", "")
+	c := mustPutNode(t, h, g.ID, "fact", "c", "")
+	mustPutEdge(t, h, g.ID, a.LineageID, b.LineageID, "cites")
+	mustPutEdge(t, h, g.ID, b.LineageID, c.LineageID, "cites")
+
+	var nb memgraphrest.NeighborhoodOut
+	if s := h.jsonDo("GET", "/v1/nodes/"+c.LineageID+"/neighborhood?depth=2&direction=incoming", nil, &nb); s != 200 {
+		t.Fatalf("status=%d", s)
+	}
+	if !containsLineage(nb.Nodes, b.LineageID) || !containsLineage(nb.Nodes, a.LineageID) {
+		t.Fatalf("incoming should reach b and a from c; got=%+v", nb.Nodes)
+	}
+}
+
+func TestNeighborhood_DirectionBoth(t *testing.T) {
+	h := newHarness(t)
+	g := mustCreateGraph(t, h, "g1", "")
+	a := mustPutNode(t, h, g.ID, "fact", "a", "")
+	b := mustPutNode(t, h, g.ID, "fact", "b", "")
+	c := mustPutNode(t, h, g.ID, "fact", "c", "")
+	mustPutEdge(t, h, g.ID, a.LineageID, b.LineageID, "cites")
+	mustPutEdge(t, h, g.ID, b.LineageID, c.LineageID, "cites")
+
+	var nb memgraphrest.NeighborhoodOut
+	if s := h.jsonDo("GET", "/v1/nodes/"+b.LineageID+"/neighborhood?depth=1&direction=both", nil, &nb); s != 200 {
+		t.Fatalf("status=%d", s)
+	}
+	if !containsLineage(nb.Nodes, a.LineageID) || !containsLineage(nb.Nodes, c.LineageID) {
+		t.Fatalf("both should reach a and c from b; got=%+v", nb.Nodes)
+	}
+}
+
+func TestNeighborhood_DirectionInvalid(t *testing.T) {
+	h := newHarness(t)
+	g := mustCreateGraph(t, h, "g1", "")
+	a := mustPutNode(t, h, g.ID, "fact", "a", "")
+
+	resp, body := h.do(h.req("GET", "/v1/nodes/"+a.LineageID+"/neighborhood?direction=sideways", nil))
+	if resp.StatusCode != 400 {
+		t.Fatalf("status=%d body=%s", resp.StatusCode, string(body))
+	}
+	var e memgraphrest.ErrorOut
+	if err := json.Unmarshal(body, &e); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if e.ErrorCode != "invalid_direction" {
+		t.Fatalf("error_code=%q body=%s", e.ErrorCode, string(body))
+	}
+}
+
 func TestSearch(t *testing.T) {
 	h := newHarness(t)
 	g := mustCreateGraph(t, h, "g1", "")
@@ -426,6 +498,29 @@ func mustPutNode(t *testing.T, h *harness, graphID, kind, content, lineage strin
 		t.Fatalf("put node status=%d", s)
 	}
 	return n
+}
+
+func mustPutEdge(t *testing.T, h *harness, graphID, from, to, kind string) memgraphrest.EdgeOut {
+	t.Helper()
+	var e memgraphrest.EdgeOut
+	if s := h.jsonDo("POST", "/v1/edges", memgraphrest.PutEdgeIn{
+		GraphID:     graphID,
+		FromLineage: from,
+		ToLineage:   to,
+		Kind:        kind,
+	}, &e); s != 201 {
+		t.Fatalf("put edge status=%d", s)
+	}
+	return e
+}
+
+func containsLineage(ns []memgraphrest.NodeOut, lineage string) bool {
+	for _, n := range ns {
+		if n.LineageID == lineage {
+			return true
+		}
+	}
+	return false
 }
 
 // Suppress "unused import" while keeping memgraph available for future tests.

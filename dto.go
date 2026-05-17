@@ -220,7 +220,8 @@ type InfoOut struct {
 }
 
 type ErrorOut struct {
-	Error string `json:"error"`
+	Error     string `json:"error"`
+	ErrorCode string `json:"error_code,omitempty"`
 }
 
 // ConflictOut is the response body for HTTP 409 from POST /v1/nodes when the
