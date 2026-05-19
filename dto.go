@@ -145,6 +145,57 @@ type SearchHitOut struct {
 	Score   float64 `json:"score"`
 }
 
+// --- Schema discovery ---
+
+type KindFreqOut struct {
+	Kind     string   `json:"kind"`
+	Count    int      `json:"count"`
+	Examples []string `json:"examples,omitempty"`
+}
+
+type TagPrefixFreqOut struct {
+	Prefix string   `json:"prefix"`
+	Count  int      `json:"count"`
+	Values []string `json:"values"`
+}
+
+type TagFreqOut struct {
+	Tag   string `json:"tag"`
+	Count int    `json:"count"`
+}
+
+type SchemaDescriptionOut struct {
+	GraphID     string             `json:"graph_id"`
+	NodeCount   int                `json:"node_count"`
+	Kinds       []KindFreqOut      `json:"kinds"`
+	TagPrefixes []TagPrefixFreqOut `json:"tag_prefixes"`
+	Tags        []TagFreqOut       `json:"tags"`
+}
+
+func toSchemaDescriptionOut(s memgraph.SchemaDescription) SchemaDescriptionOut {
+	out := SchemaDescriptionOut{
+		GraphID:     string(s.GraphID),
+		NodeCount:   s.NodeCount,
+		Kinds:       make([]KindFreqOut, 0, len(s.Kinds)),
+		TagPrefixes: make([]TagPrefixFreqOut, 0, len(s.TagPrefixes)),
+		Tags:        make([]TagFreqOut, 0, len(s.Tags)),
+	}
+	for _, k := range s.Kinds {
+		out.Kinds = append(out.Kinds, KindFreqOut{Kind: k.Kind, Count: k.Count, Examples: k.Examples})
+	}
+	for _, p := range s.TagPrefixes {
+		out.TagPrefixes = append(out.TagPrefixes, TagPrefixFreqOut{Prefix: p.Prefix, Count: p.Count, Values: p.Values})
+	}
+	for _, t := range s.Tags {
+		out.Tags = append(out.Tags, TagFreqOut{Tag: t.Tag, Count: t.Count})
+	}
+	return out
+}
+
+type TagsListOut struct {
+	Tags []TagFreqOut `json:"tags"`
+}
+
 // --- Input DTOs ---
 
 type CreateGraphIn struct {

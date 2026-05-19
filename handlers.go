@@ -40,6 +40,8 @@ func (s *Server) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/graphs/{id}/symlinks", s.handleSymlinks)
 	mux.HandleFunc("GET /v1/graphs/{id}/nodes", s.handleListNodes)
 	mux.HandleFunc("GET /v1/graphs/{id}/search", s.handleSearch)
+	mux.HandleFunc("GET /v1/graphs/{id}/schema", s.handleDescribeSchema)
+	mux.HandleFunc("GET /v1/graphs/{id}/tags", s.handleListTags)
 
 	// Nodes
 	mux.HandleFunc("POST /v1/nodes", s.handlePutNode)
@@ -298,6 +300,33 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 			Snippet: h.Snippet,
 			Score:   h.Score,
 		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleDescribeSchema(w http.ResponseWriter, r *http.Request) {
+	id := memgraph.GraphID(r.PathValue("id"))
+	d, err := s.store.DescribeSchema(r.Context(), id)
+	if err != nil {
+		mapStoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toSchemaDescriptionOut(d))
+}
+
+func (s *Server) handleListTags(w http.ResponseWriter, r *http.Request) {
+	id := memgraph.GraphID(r.PathValue("id"))
+	q := r.URL.Query()
+	prefix := q.Get("prefix")
+	limit := parseIntDefault(q.Get("limit"), 100)
+	tags, err := s.store.ListTags(r.Context(), id, prefix, limit)
+	if err != nil {
+		mapStoreError(w, err)
+		return
+	}
+	out := TagsListOut{Tags: make([]TagFreqOut, 0, len(tags))}
+	for _, t := range tags {
+		out.Tags = append(out.Tags, TagFreqOut{Tag: t.Tag, Count: t.Count})
 	}
 	writeJSON(w, http.StatusOK, out)
 }

@@ -326,6 +326,48 @@ func TestSearch(t *testing.T) {
 	}
 }
 
+func TestDescribeSchemaAndListTags(t *testing.T) {
+	h := newHarness(t)
+	g := mustCreateGraph(t, h, "g1", "")
+
+	put := func(kind string, tags []string) {
+		var n memgraphrest.NodeOut
+		if s := h.jsonDo("POST", "/v1/nodes", memgraphrest.PutNodeIn{
+			GraphID: g.ID, Kind: kind, Content: "x", Tags: tags,
+		}, &n); s != 201 {
+			t.Fatalf("put node status=%d", s)
+		}
+	}
+	put("recipe", []string{"protein:beef", "cuisine:french"})
+	put("recipe", []string{"protein:chicken", "cuisine:french"})
+	put("preference", []string{"weeknight"})
+
+	var schema memgraphrest.SchemaDescriptionOut
+	if s := h.jsonDo("GET", "/v1/graphs/"+g.ID+"/schema", nil, &schema); s != 200 {
+		t.Fatalf("schema status=%d", s)
+	}
+	if schema.NodeCount != 3 || len(schema.Kinds) != 2 {
+		t.Fatalf("schema=%+v", schema)
+	}
+	foundProtein := false
+	for _, p := range schema.TagPrefixes {
+		if p.Prefix == "protein" {
+			foundProtein = true
+		}
+	}
+	if !foundProtein {
+		t.Fatalf("missing protein prefix in %+v", schema.TagPrefixes)
+	}
+
+	var tags memgraphrest.TagsListOut
+	if s := h.jsonDo("GET", "/v1/graphs/"+g.ID+"/tags?prefix=protein:", nil, &tags); s != 200 {
+		t.Fatalf("tags status=%d", s)
+	}
+	if len(tags.Tags) != 2 {
+		t.Fatalf("tags=%+v", tags)
+	}
+}
+
 func TestSymlinks(t *testing.T) {
 	h := newHarness(t)
 	g1 := mustCreateGraph(t, h, "g1", "")
