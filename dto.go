@@ -9,18 +9,22 @@ import (
 // --- Output DTOs (JSON-serialized forms of memgraph types) ---
 
 type NodeOut struct {
-	ID           string         `json:"id"`
-	GraphID      string         `json:"graph_id"`
-	LineageID    string         `json:"lineage_id"`
-	Version      int            `json:"version"`
-	Kind         string         `json:"kind"`
-	Content      string         `json:"content"`
+	ID        string `json:"id"`
+	GraphID   string `json:"graph_id"`
+	LineageID string `json:"lineage_id"`
+	Version   int    `json:"version"`
+	Kind      string `json:"kind"`
+	// Content / CreatedBy use omitempty so the compact list_nodes projection
+	// (?compact=true) doesn't ship empty strings to the wire. Real nodes
+	// always have non-empty Content under v0.5 semantics, so emitting "" is
+	// pure waste.
+	Content      string         `json:"content,omitempty"`
 	Summary      string         `json:"summary,omitempty"`
 	Tags         []string       `json:"tags,omitempty"`
 	Metadata     map[string]any `json:"metadata,omitempty"`
 	FreshnessAt  *time.Time     `json:"freshness_at,omitempty"`
 	CreatedAt    time.Time      `json:"created_at"`
-	CreatedBy    string         `json:"created_by"`
+	CreatedBy    string         `json:"created_by,omitempty"`
 	SupersededBy *string        `json:"superseded_by,omitempty"`
 	IsCurrent    bool           `json:"is_current"`
 	IsStale      bool           `json:"is_stale"`

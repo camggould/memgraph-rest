@@ -261,10 +261,11 @@ func (s *Server) handleListNodes(w http.ResponseWriter, r *http.Request) {
 	id := memgraph.GraphID(r.PathValue("id"))
 	q := r.URL.Query()
 	filter := memgraph.NodeFilter{
-		Kinds:  splitCSV(q.Get("kinds")),
-		Tags:   splitCSV(q.Get("tags")),
-		Limit:  parseIntDefault(q.Get("limit"), 50),
-		Offset: parseIntDefault(q.Get("offset"), 0),
+		Kinds:   splitCSV(q.Get("kinds")),
+		Tags:    splitCSV(q.Get("tags")),
+		Limit:   parseIntDefault(q.Get("limit"), 50),
+		Offset:  parseIntDefault(q.Get("offset"), 0),
+		Compact: parseBool(q.Get("compact")),
 	}
 	ns, err := s.store.ListNodes(r.Context(), id, filter)
 	if err != nil {

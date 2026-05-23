@@ -1,5 +1,5 @@
-github.com/camggould/memgraph v0.3.0 h1:bJI8XfoPqgWayhLFoeOqv7UnIRRYoWlJ4WQL3dJgE8k=
-github.com/camggould/memgraph v0.3.0/go.mod h1:wKTN2CdDi6M1V7EVILMM0MFLaJERMAu0+CPEuhiFYsc=
+github.com/camggould/memgraph v0.6.0 h1:GPm4kCrpxl7FmA4jhrWe1RwS5RetghO9OxB0BZ1GuLs=
+github.com/camggould/memgraph v0.6.0/go.mod h1:Fl7n7ShAUbstvgHmkK6cnhCgBqje9BswH3qZ1JNi7Hk=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

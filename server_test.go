@@ -570,3 +570,53 @@ var _ = memgraph.ErrNotFound
 
 // Avoid an "imported and not used" warning if we ever stub.
 var _ = fmt.Sprintf
+
+func TestListNodes_Compact(t *testing.T) {
+	h := newHarness(t)
+	g := mustCreateGraph(t, h, "g1", "")
+
+	var v1 memgraphrest.NodeOut
+	if s := h.jsonDo("POST", "/v1/nodes", memgraphrest.PutNodeIn{
+		GraphID:  g.ID,
+		Kind:     "fact",
+		Content:  "heavy payload that compact should omit",
+		Summary:  "canvas-label",
+		Tags:     []string{"a"},
+		Metadata: map[string]any{"k": "v"},
+	}, &v1); s != 201 {
+		t.Fatalf("put status=%d", s)
+	}
+
+	// Full mode: heavy fields present in parsed struct and in raw JSON.
+	resp, rawFull := h.do(h.req("GET", "/v1/graphs/"+g.ID+"/nodes", nil))
+	mustStatus(t, resp.StatusCode, 200, rawFull)
+	if !strings.Contains(string(rawFull), `"content":"heavy`) {
+		t.Fatalf("full mode: content missing from raw JSON: %s", rawFull)
+	}
+	if !strings.Contains(string(rawFull), `"metadata"`) {
+		t.Fatalf("full mode: metadata missing from raw JSON: %s", rawFull)
+	}
+
+	// Compact mode: heavy field keys absent from raw JSON.
+	respC, rawCompact := h.do(h.req("GET", "/v1/graphs/"+g.ID+"/nodes?compact=1", nil))
+	mustStatus(t, respC.StatusCode, 200, rawCompact)
+	if strings.Contains(string(rawCompact), `"content"`) {
+		t.Fatalf("compact mode: content present in raw JSON: %s", rawCompact)
+	}
+	if strings.Contains(string(rawCompact), `"metadata"`) {
+		t.Fatalf("compact mode: metadata present in raw JSON: %s", rawCompact)
+	}
+	if strings.Contains(string(rawCompact), `"freshness_at"`) {
+		t.Fatalf("compact mode: freshness_at present in raw JSON: %s", rawCompact)
+	}
+	if strings.Contains(string(rawCompact), `"created_by"`) {
+		t.Fatalf("compact mode: created_by present in raw JSON: %s", rawCompact)
+	}
+	// Light fields still present.
+	if !strings.Contains(string(rawCompact), `"summary":"canvas-label"`) {
+		t.Fatalf("compact mode: summary missing: %s", rawCompact)
+	}
+	if !strings.Contains(string(rawCompact), `"lineage_id":"`+v1.LineageID+`"`) {
+		t.Fatalf("compact mode: lineage_id missing: %s", rawCompact)
+	}
+}

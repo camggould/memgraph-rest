@@ -3,7 +3,7 @@ module github.com/camggould/memgraph-rest
 go 1.25.5
 
 require (
-	github.com/camggould/memgraph v0.3.0
+	github.com/camggould/memgraph v0.6.0
 	github.com/spf13/cobra v1.8.1
 )
 
